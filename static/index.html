@@ -1,0 +1,667 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Sixteen Moods</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&family=Recursive:slnt,wght,CASL,MONO@-15..0,300..1000,0..1,0..1&display=swap">
+<style>
+/* Layout: one narrow column built around a receipt printer; the mood picker is a full-screen overlay. */
+:root {
+  --bg: #e4e6eb;
+  --surface: #f3f4f7;
+  --fg: #15161a;
+  --muted: #5d616c;
+  --line: #c7cad2;
+  --printer: #23252b;
+  --printer-ink: #c9ccd4;
+  --led: #ff4a3d;
+  --paper: #ffffff;
+  --scrim: rgba(228, 230, 235, 0.66);
+  --pixel: "VT323", ui-monospace, "Courier New", monospace;
+  --font: "Recursive", ui-rounded, system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101114; --surface: #1a1b20; --fg: #eceef2; --muted: #9297a2; --line: #2d2f36;
+    --printer: #30333b; --printer-ink: #b7bbc5; --scrim: rgba(16, 17, 20, 0.72);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101114; --surface: #1a1b20; --fg: #eceef2; --muted: #9297a2; --line: #2d2f36;
+  --printer: #30333b; --printer-ink: #b7bbc5; --scrim: rgba(16, 17, 20, 0.72);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  font-variation-settings: "CASL" 0.4;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 48px;
+}
+.wrap { max-width: 460px; margin: 0 auto; display: grid; gap: 20px; }
+.topbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+h1, .overlay-title {
+  margin: 0;
+  font-family: var(--pixel);
+  font-weight: 400;
+  line-height: 0.9;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+h1 { font-size: clamp(2.4rem, 9vw, 3.2rem); }
+
+.btn {
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 650;
+  padding: 9px 14px;
+  border-radius: 999px;
+  border: 1.5px solid var(--fg);
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+}
+.btn.primary { background: var(--fg); color: var(--bg); }
+.btn:hover { transform: translateY(-1px); }
+.btn:focus-visible, .tile:focus-visible, .seg input:focus-visible + span, .paper:focus-visible {
+  outline: 3px solid var(--led); outline-offset: 2px;
+}
+
+/* The printer */
+.machine { display: grid; justify-items: center; }
+.printer {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  background: var(--printer);
+  border-radius: 16px 16px 8px 8px;
+  padding: 12px 16px 12px;
+  display: grid;
+  gap: 10px;
+  box-shadow: 0 10px 24px -14px rgba(0, 0, 0, 0.6);
+}
+.printer-top { display: flex; justify-content: space-between; align-items: center; }
+.brand { font-family: var(--pixel); font-size: 1.15rem; letter-spacing: 0.14em; color: var(--printer-ink); }
+.led { width: 9px; height: 9px; border-radius: 50%; background: var(--led); opacity: 0.35; }
+.machine.printing .led { animation: blink 0.3s steps(2) infinite; }
+@keyframes blink { 50% { opacity: 1; } }
+.slot { height: 7px; border-radius: 4px; background: #000; margin-inline: 4px; }
+.paper {
+  position: relative;
+  z-index: 1;
+  width: calc(100% - 40px);
+  margin-top: -14px;
+  padding-top: 10px;
+  background: var(--paper);
+  box-shadow: 0 14px 30px -18px rgba(0, 0, 0, 0.55);
+  cursor: pointer;
+}
+.paper img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+.machine.printing .paper img { animation: print 2.4s steps(56, end) both; }
+@keyframes print {
+  from { clip-path: inset(0 0 100% 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+
+.controls { display: grid; gap: 12px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.seg { border: 0; margin: 0; padding: 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.seg legend { float: left; margin-right: 6px; font-size: 0.82rem; color: var(--muted); }
+.seg label { position: relative; }
+.seg input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.seg span {
+  display: inline-block;
+  font-family: var(--pixel);
+  font-size: 1.1rem;
+  padding: 3px 10px;
+  border: 1.5px solid var(--line);
+  border-radius: 6px;
+}
+.seg input:checked + span { border-color: var(--fg); background: var(--fg); color: var(--bg); }
+.status { margin: 0; min-height: 1.3em; font-size: 0.85rem; color: var(--muted); }
+.how { margin: 0; font-size: 0.84rem; color: var(--muted); line-height: 1.55; }
+.how code { font-variation-settings: "MONO" 1; color: var(--fg); }
+
+/* Mood picker overlay */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  overflow-y: auto;
+  padding-block: calc(24px + env(safe-area-inset-top, 0px)) calc(24px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background: var(--scrim);
+  -webkit-backdrop-filter: blur(14px) grayscale(1);
+  backdrop-filter: blur(14px) grayscale(1);
+  transition: opacity .3s ease, visibility .3s;
+}
+.overlay.closed { opacity: 0; visibility: hidden; pointer-events: none; }
+.panel { width: min(100%, 640px); display: grid; gap: 18px; transition: transform .3s ease; }
+.overlay.closed .panel { transform: translateY(14px) scale(0.97); }
+.overlay-head { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
+.overlay-head .intro { display: grid; gap: 8px; }
+.overlay-title { font-size: clamp(2.2rem, 7vw, 3rem); }
+.lede { margin: 0; color: var(--muted); font-size: 0.95rem; line-height: 1.5; max-width: 46ch; }
+.btn.icon { width: 40px; height: 40px; padding: 0; font-size: 1.3rem; line-height: 1; flex: none; }
+.grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.tile {
+  font: inherit;
+  text-align: left;
+  display: grid;
+  gap: 2px;
+  padding: 10px 10px 9px;
+  border-radius: 8px;
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  color: var(--fg);
+  cursor: pointer;
+  min-width: 0;
+  transition: transform .12s ease, border-color .12s ease;
+}
+.tile:hover { transform: translateY(-2px) rotate(-0.8deg); border-color: var(--muted); }
+.tile[aria-pressed="true"] { border-color: var(--fg); box-shadow: inset 0 0 0 1.5px var(--fg); }
+.tile-name { font-size: 0.92rem; font-weight: 750; font-variation-settings: "CASL" 1; overflow-wrap: anywhere; }
+.tile-tech { font-family: var(--pixel); font-size: 1.02rem; line-height: 1; color: var(--muted); overflow-wrap: anywhere; }
+@media (max-width: 440px) {
+  .grid { gap: 6px; }
+  .tile { padding: 8px 7px 7px; }
+  .tile-name { font-size: 0.8rem; }
+  .tile-tech { font-size: 0.9rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tile, .btn, .overlay, .panel { transition: none; }
+  .tile:hover, .btn:hover { transform: none; }
+  .machine.printing .paper img, .machine.printing .led { animation: none; }
+}
+</style>
+
+<div class="wrap" id="page">
+  <header class="topbar">
+    <h1>Sixteen Moods</h1>
+    <button class="btn" id="open-moods" type="button">Choose a mood</button>
+  </header>
+
+  <section class="machine" id="machine" aria-label="Receipt printer">
+    <div class="printer">
+      <div class="printer-top"><span class="brand">MOOD-O-MATIC</span><span class="led" aria-hidden="true"></span></div>
+      <div class="slot"></div>
+    </div>
+    <div class="paper" id="paper" tabindex="0" role="button" aria-label="Choose a new mood">
+      <img id="receipt" alt="A black and white mood receipt" hidden>
+    </div>
+  </section>
+
+  <div class="controls">
+    <div class="actions">
+      <button class="btn primary" id="again" type="button">Print again</button>
+      <button class="btn" id="reprint" type="button">Reprint same second</button>
+      <button class="btn" id="copy" type="button">Copy image</button>
+    </div>
+    <fieldset class="seg">
+      <legend>Paper</legend>
+      <label><input type="radio" name="paper" id="paper-58" value="384" checked><span>58 mm</span></label>
+      <label><input type="radio" name="paper" id="paper-80" value="576"><span>80 mm</span></label>
+    </fieldset>
+    <p class="status" id="status" aria-live="polite"></p>
+  </div>
+
+  <p class="how">The seed is only the time: the current second goes through a hash into <code>randomSeed()</code> and <code>noiseSeed()</code>. Your mood picks the drawing technique, and the clock decides everything else. Every pixel is pure black or white, sized to a real thermal printer (384 dots for 58&nbsp;mm paper, 576 for 80&nbsp;mm). To save it, copy it or right-click / long-press the receipt.</p>
+</div>
+
+<div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="overlay-title">
+  <div class="panel">
+    <div class="overlay-head">
+      <div class="intro">
+        <h2 class="overlay-title" id="overlay-title">How are you feeling?</h2>
+        <p class="lede">Pick a mood and the printer makes you a receipt from this exact second. Come back a second later and it will be different.</p>
+      </div>
+      <button class="btn icon" id="close-overlay" type="button" aria-label="Close mood picker">×</button>
+    </div>
+    <div class="grid" id="grid" role="group" aria-label="Moods"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+<script>
+// ---------- Moods: each one picks a 1-bit drawing technique ----------
+const MOODS = [
+  { name: "Giddy",     tech: "googly eyes",     gen: "eyes" },
+  { name: "Serene",    tech: "topo lines",      gen: "topo" },
+  { name: "Cozy",      tech: "lava glow",       gen: "glow" },
+  { name: "Curious",   tech: "10 PRINT maze",   gen: "maze" },
+  { name: "Dreamy",    tech: "hair flow",       gen: "flow" },
+  { name: "Restless",  tech: "jagged walkers",  gen: "jagged" },
+  { name: "Hopeful",   tech: "sunrise rays",    gen: "sun" },
+  { name: "Wistful",   tech: "melting stripes", gen: "melt" },
+  { name: "Playful",   tech: "tiny critters",   gen: "critters" },
+  { name: "Focused",   tech: "moiré rings",     gen: "moire" },
+  { name: "Tender",    tech: "halftone",        gen: "halftone" },
+  { name: "Fierce",    tech: "shattered glass", gen: "shards" },
+  { name: "Bubbly",    tech: "XOR bubbles",     gen: "xor" },
+  { name: "Mellow",    tech: "ridge lines",     gen: "ridges" },
+  { name: "Proud",     tech: "mirror sigil",    gen: "sigil" },
+  { name: "Awestruck", tech: "dithered sky",    gen: "sky" },
+];
+
+// ---------- Seed: only the current second ----------
+function timeSeed(date) {
+  const s = String(Math.floor(date.getTime() / 1000));
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+
+// ---------- 1-bit helpers ----------
+const B8 = [[0,32,8,40,2,34,10,42],[48,16,56,24,50,18,58,26],[12,44,4,36,14,46,6,38],[60,28,52,20,62,30,54,22],
+            [3,35,11,43,1,33,9,41],[51,19,59,27,49,17,57,25],[15,47,7,39,13,45,5,37],[63,31,55,23,61,29,53,21]];
+// Paint every pixel from fn(x, y): true/false, or a darkness 0..1 that gets ordered-dithered.
+function field(g, W, H, fn) {
+  g.loadPixels();
+  const px = g.pixels;
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const v = fn(x, y);
+      const black = v === true || (typeof v === "number" && v > (B8[y & 7][x & 7] + 0.5) / 64);
+      const i = 4 * (y * W + x), c = black ? 0 : 255;
+      px[i] = px[i + 1] = px[i + 2] = c; px[i + 3] = 255;
+    }
+  }
+  g.updatePixels();
+}
+const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+const mod = (a, n) => ((a % n) + n) % n;
+
+// ---------- Generators: draw black on white into g (W x H) ----------
+const GEN = {
+  eyes(p, g, W, H) {
+    const cs = [];
+    for (let t = 0; t < 4000 && cs.length < 70; t++) {
+      const r = p.random(W * 0.035, W * 0.15) * (cs.length < 5 ? 1.5 : 1);
+      const x = p.random(r + 3, W - r - 3), y = p.random(r + 3, H - r - 3);
+      if (cs.every(c => Math.hypot(c.x - x, c.y - y) > c.r + r + 4)) cs.push({ x, y, r });
+    }
+    for (const c of cs) {
+      g.stroke(0); g.strokeWeight(Math.max(2, c.r * 0.09)); g.fill(255); g.circle(c.x, c.y, c.r * 2);
+      const a = p.random(p.TWO_PI), pr = c.r * p.random(0.3, 0.55), d = (c.r - pr) * p.random(0.45, 0.9);
+      const px = c.x + Math.cos(a) * d, py = c.y + Math.sin(a) * d;
+      g.noStroke(); g.fill(0); g.circle(px, py, pr * 2);
+      g.fill(255); g.circle(px - pr * 0.35, py - pr * 0.35, pr * 0.45);
+      const roll = p.random();
+      if (roll < 0.2) { g.fill(0); g.arc(c.x, c.y, c.r * 2, c.r * 2, p.PI, p.TWO_PI, p.CHORD); }
+      else if (roll < 0.35) {
+        g.stroke(0); g.strokeWeight(Math.max(1.5, c.r * 0.07));
+        for (let j = -2; j <= 2; j++) {
+          const aa = -p.HALF_PI + j * 0.38;
+          g.line(c.x + Math.cos(aa) * c.r, c.y + Math.sin(aa) * c.r, c.x + Math.cos(aa) * c.r * 1.28, c.y + Math.sin(aa) * c.r * 1.28);
+        }
+      }
+    }
+  },
+
+  topo(p, g, W, H) {
+    const off = p.random(1000), bands = p.random(16, 26);
+    field(g, W, H, (x, y) => {
+      const v = p.noise(x / W * 2.4 + off, y / W * 2.4 + off) * bands, fl = Math.floor(v), fr = v - fl;
+      return fl % 5 === 0 ? fr < 0.22 : fr < 0.09;
+    });
+    const hx = p.random(W * 0.2, W * 0.8), hy = p.random(H * 0.2, H * 0.8), s = W * 0.03;
+    g.stroke(0); g.strokeWeight(W * 0.014);
+    g.line(hx - s, hy - s, hx + s, hy + s); g.line(hx - s, hy + s, hx + s, hy - s);
+    g.noFill(); g.strokeWeight(W * 0.007); g.circle(hx, hy, s * 4.4);
+  },
+
+  glow(p, g, W, H) {
+    const bs = Array.from({ length: Math.floor(p.random(4, 8)) }, () => ({ x: p.random(W), y: p.random(H), r: p.random(W * 0.05, W * 0.13) }));
+    field(g, W, H, (x, y) => {
+      let s = 0;
+      for (const b of bs) s += (b.r * b.r) / ((x - b.x) ** 2 + (y - b.y) ** 2 + 1);
+      return s >= 1 ? 1 : Math.pow(s, 1.4) * 0.95;
+    });
+  },
+
+  maze(p, g, W, H) {
+    const c = Math.round(W / 22);
+    g.stroke(0); g.strokeWeight(c * 0.24); g.strokeCap(p.ROUND);
+    for (let y = 0; y < H; y += c) for (let x = 0; x < W; x += c) {
+      const r = p.random();
+      if (r < 0.04) { g.noStroke(); g.fill(0); g.circle(x + c / 2, y + c / 2, c * 0.7); g.stroke(0); }
+      else if (r < 0.52) g.line(x, y, x + c, y + c);
+      else g.line(x + c, y, x, y + c);
+    }
+  },
+
+  flow(p, g, W, H) {
+    const off = p.random(1000), k = W / 360, turns = p.random(1.5, 3.5);
+    g.stroke(0); g.strokeWeight(1.4 * k); g.noFill();
+    for (let i = 0; i < 380; i++) {
+      let x = p.random(W), y = p.random(H);
+      g.beginShape();
+      for (let s = 0; s < 150; s++) {
+        g.vertex(x, y);
+        const a = p.noise(x / W * 2 + off, y / W * 2 + off) * p.TWO_PI * turns;
+        x += Math.cos(a) * 1.6 * k; y += Math.sin(a) * 1.6 * k;
+        if (x < 0 || x > W || y < 0 || y > H) break;
+      }
+      g.endShape();
+    }
+  },
+
+  jagged(p, g, W, H) {
+    const k = W / 360;
+    const ws = Array.from({ length: 26 }, () => ({ x: p.random(W), y: p.random(H), a: Math.floor(p.random(8)) * p.QUARTER_PI, w: p.random(1, 3.5) * k }));
+    g.stroke(0); g.strokeCap(p.SQUARE);
+    for (let s = 0; s < 90; s++) for (const w of ws) {
+      if (p.random() < 0.35) w.a += p.random([-1, 1]) * p.QUARTER_PI * Math.floor(p.random(1, 4));
+      const len = W * 0.03 * p.random(0.5, 1.6), nx = w.x + Math.cos(w.a) * len, ny = w.y + Math.sin(w.a) * len;
+      g.strokeWeight(w.w); g.line(w.x, w.y, nx, ny);
+      w.x = nx; w.y = ny;
+      if (w.x < -10 || w.x > W + 10 || w.y < -10 || w.y > H + 10) { w.x = p.random(W); w.y = p.random(H); }
+    }
+  },
+
+  sun(p, g, W, H) {
+    const cx = W * p.random(0.3, 0.7), cy = H * p.random(0.42, 0.6), R = W * p.random(0.12, 0.2);
+    const horizon = cy + R * p.random(0.15, 0.6), n = Math.floor(p.random(12, 26)), rot = p.random(p.TWO_PI);
+    field(g, W, H, (x, y) => {
+      if (y > horizon) { const k = Math.log(y - horizon + 1) * 5; return k - Math.floor(k) < 0.3; }
+      const d = Math.hypot(x - cx, y - cy);
+      if (d < R) return 0.22 + 0.5 * (d / R);
+      const sector = Math.floor(((Math.atan2(y - cy, x - cx) + rot + p.TWO_PI * 2) / p.TWO_PI) * n * 2);
+      return sector % 2 === 0 ? clamp(1 - (d - R) / (W * 0.85)) * 0.9 : 0.03;
+    });
+  },
+
+  melt(p, g, W, H) {
+    const off = p.random(1000), stripes = Math.floor(p.random(14, 30)), amt = p.random(0.8, 1.6);
+    field(g, W, H, (x, y) => {
+      const u = x / W, v = y / H, t = v * v;
+      const xs = u + (p.noise(u * 3 + off, v * 2) - 0.5) * amt * t + Math.sin(v * 22 + u * 6) * 0.012 * t;
+      return mod(Math.floor(xs * stripes), 2) === 0;
+    });
+  },
+
+  critters(p, g, W, H) {
+    const px = Math.floor(W / 45), size = 7 * px, gap = 2 * px;
+    const cols = Math.floor((W + gap) / (size + gap)), rows = Math.floor((H + gap) / (size + gap));
+    const ox = (W - (cols * size + (cols - 1) * gap)) / 2, oy = (H - (rows * size + (rows - 1) * gap)) / 2;
+    g.noStroke();
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      const x0 = ox + c * (size + gap), y0 = oy + r * (size + gap), inv = p.random() < 0.12;
+      if (inv) { g.fill(0); g.rect(x0 - px / 2, y0 - px / 2, size + px, size + px); }
+      g.fill(inv ? 255 : 0);
+      for (let yy = 0; yy < 7; yy++) for (let xx = 0; xx < 4; xx++) {
+        if (p.random() < 0.5) { g.rect(x0 + xx * px, y0 + yy * px, px, px); g.rect(x0 + (6 - xx) * px, y0 + yy * px, px, px); }
+      }
+    }
+  },
+
+  moire(p, g, W, H) {
+    const ax = W * p.random(0.25, 0.45), ay = H * p.random(0.3, 0.5), bx = W * p.random(0.55, 0.75), by = H * p.random(0.5, 0.7);
+    const sp = W / p.random(50, 70), sp2 = sp * p.random(1, 1.12);
+    field(g, W, H, (x, y) => (Math.floor(Math.hypot(x - ax, y - ay) / sp) + Math.floor(Math.hypot(x - bx, y - by) / sp2)) % 2 === 0);
+  },
+
+  halftone(p, g, W, H) {
+    const step = Math.round(W / 34), off = p.random(1000);
+    g.noStroke(); g.fill(0);
+    for (let r = 0, y = 0; y < H + step; r++, y += step * 0.87) {
+      for (let x = (r % 2) * step / 2; x < W + step; x += step) {
+        const v = clamp((p.noise(x / W * 2.2 + off, y / W * 2.2 + off) - 0.3) / 0.4);
+        const d = step * 1.15 * Math.sqrt(v);
+        if (d > 1) g.circle(x, y, d);
+      }
+    }
+  },
+
+  shards(p, g, W, H) {
+    const ls = Array.from({ length: Math.floor(p.random(9, 16)) }, () => {
+      const a = p.random(p.TWO_PI), nx = Math.cos(a), ny = Math.sin(a);
+      return { nx, ny, c: nx * p.random(W) + ny * p.random(H) };
+    });
+    field(g, W, H, (x, y) => { let s = 0; for (const l of ls) if (l.nx * x + l.ny * y > l.c) s++; return s % 2 === 1; });
+  },
+
+  xor(p, g, W, H) {
+    const cs = Array.from({ length: Math.floor(p.random(16, 28)) }, () => ({ x: p.random(W), y: p.random(H), r: p.random(W * 0.05, W * 0.33) }));
+    field(g, W, H, (x, y) => { let n = 0; for (const c of cs) if ((x - c.x) ** 2 + (y - c.y) ** 2 < c.r * c.r) n++; return n % 2 === 1; });
+  },
+
+  ridges(p, g, W, H) {
+    const rows = 34, sp = H / (rows + 6), off = p.random(1000), peak = p.random(0.35, 0.65);
+    g.stroke(0); g.strokeWeight(1.6 * W / 360); g.fill(255);
+    for (let i = 0; i < rows; i++) {
+      const base = sp * (i + 5);
+      g.beginShape(); g.vertex(0, H);
+      for (let x = 0; x <= W; x += 2) {
+        const u = x / W, env = Math.exp(-((u - peak) ** 2) / 0.025);
+        g.vertex(x, base - p.noise(u * 9 + off, i * 0.28) * env * sp * 7);
+      }
+      g.vertex(W, H); g.endShape(p.CLOSE);
+    }
+  },
+
+  sigil(p, g, W, H) {
+    const gs = W / 12, cx = W / 2, cy = H / 2;
+    const dirs = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]];
+    const pts = [[0, Math.floor(p.random(-3, 4))]];
+    for (let s = 0; s < 40 && pts.length < 26; s++) {
+      const [x, y] = pts[pts.length - 1], d = p.random(dirs), nx = x + d[0], ny = y + d[1];
+      if (Math.abs(nx) <= 4 && Math.abs(ny) <= 5) pts.push([nx, ny]);
+    }
+    const R = Math.min(W, H) * 0.47;
+    g.noFill(); g.stroke(0);
+    g.strokeWeight(W * 0.014); g.circle(cx, cy, R * 2);
+    g.strokeWeight(W * 0.005); g.circle(cx, cy, R * 1.86);
+    g.strokeWeight(gs * 0.3); g.strokeCap(p.ROUND); g.strokeJoin(p.ROUND);
+    for (const m of [1, -1]) { g.beginShape(); for (const [x, y] of pts) g.vertex(cx + m * x * gs, cy + y * gs); g.endShape(); }
+    g.noStroke(); g.fill(0);
+    for (let i = 0; i < 5; i++) { const [x, y] = p.random(pts); g.circle(cx + x * gs, cy + y * gs, gs * 0.75); g.circle(cx - x * gs, cy + y * gs, gs * 0.75); }
+  },
+
+  sky(p, g, W, H) {
+    const off = p.random(1000);
+    p.noiseDetail(5, 0.55);
+    field(g, W, H, (x, y) => clamp((p.noise(x / W * 2.5 + off, y / W * 2.5 + off) - 0.3) * 1.9) * 0.92);
+    p.noiseDetail(4, 0.5);
+    g.noStroke(); g.fill(255);
+    for (let i = 0; i < 170; i++) g.rect(Math.floor(p.random(W)), Math.floor(p.random(H)), p.random() < 0.2 ? 2 : 1, p.random() < 0.2 ? 2 : 1);
+    for (let i = 0; i < 9; i++) {
+      const x = p.random(W), y = p.random(H), s = p.random(W * 0.015, W * 0.035);
+      for (const [col, w] of [[0, 4], [255, 2]]) { g.stroke(col); g.strokeWeight(w); g.line(x - s, y, x + s, y); g.line(x, y - s, x, y + s); }
+    }
+  },
+};
+
+// ---------- Fortunes, also from the seed ----------
+const WORDS = {
+  n: ["moth", "spoon", "cloud", "radiator", "pigeon", "lighthouse", "sock", "comet", "teaspoon", "ghost", "umbrella", "stapler", "owl", "kettle"],
+  v: ["forgive", "follow", "remember", "applaud", "hum at", "outrun", "believe"],
+  a: ["gently", "sideways", "on tuesday", "twice", "without asking", "in the rain", "very slowly"],
+  adj: ["tiny", "suspicious", "luminous", "damp", "enormous", "polite", "electric", "invisible"],
+  num: ["two", "seven", "eleven", "forty", "zero", "nine hundred"],
+};
+const TEMPLATES = [
+  "today a {n} will {v} you {a}.",
+  "your {n} is {adj}. this is fine.",
+  "{num} {n}s are thinking about you.",
+  "do not trust the {adj} {n}.",
+  "you will {v} a {adj} {n} {a}.",
+  "lucky object: one {adj} {n}.",
+];
+function fortune(p) { return p.random(TEMPLATES).replace(/\{(\w+)\}/g, (_, k) => p.random(WORDS[k])).toUpperCase(); }
+function wrapText(p, text, maxW) {
+  const lines = []; let cur = "";
+  for (const w of text.split(" ")) {
+    const t = cur ? cur + " " + w : w;
+    if (p.textWidth(t) > maxW && cur) { lines.push(cur); cur = w; } else cur = t;
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+const pad = n => String(n).padStart(2, "0");
+
+// ---------- Build the receipt ----------
+function buildReceipt(p, st) {
+  const W = st.width, k = W / 384, M = Math.round(12 * k);
+  const mood = MOODS[st.i];
+  const artW = W - 2 * M, artH = Math.round(artW * 1.3);
+
+  p.randomSeed(st.seed); p.noiseSeed(st.seed); p.noiseDetail(4, 0.5);
+  const g = p.createGraphics(artW, artH);
+  g.pixelDensity(1); g.background(255);
+  GEN[mood.gen](p, g, artW, artH);
+
+  p.textFont("VT323"); p.textSize(22 * k);
+  const lines = wrapText(p, fortune(p), W - 2 * M);
+  const H = Math.round(M + 10 * k + 34 * k + 26 * k + 14 * k + 3 * 22 * k + 6 * k + 14 * k + artH + 14 * k + 16 * k
+                      + lines.length * 21 * k + 12 * k + 48 * k + 22 * k + 30 * k + 22 * k + M);
+  p.resizeCanvas(W, H);
+  p.background(255);
+
+  const dash = y => { p.stroke(0); p.strokeWeight(2 * k); for (let x = M; x < W - M; x += 10 * k) p.line(x, y, x + 5 * k, y); p.noStroke(); };
+  const row = (label, value, y) => {
+    p.textAlign(p.LEFT, p.TOP);
+    const dw = p.textWidth("."), n = Math.max(0, Math.floor((W - 2 * M - p.textWidth(label) - p.textWidth(value) - 2 * dw) / dw));
+    p.text(label + " " + ".".repeat(n), M, y);
+    p.textAlign(p.RIGHT, p.TOP); p.text(value, W - M, y);
+  };
+
+  const t = st.time, date = `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}`;
+  const time = `${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())}`;
+  p.fill(0); p.noStroke(); p.textFont("VT323");
+  let y = M + 10 * k;
+  p.textAlign(p.CENTER, p.TOP); p.textSize(34 * k); p.text("SIXTEEN MOODS", W / 2, y); y += 34 * k;
+  p.textSize(20 * k); p.text(`MOOD RECEIPT NO. ${String(st.seed % 100000).padStart(5, "0")}`, W / 2, y); y += 26 * k;
+  dash(y); y += 14 * k;
+  p.textSize(22 * k);
+  row("MOOD", mood.name.toUpperCase(), y); y += 22 * k;
+  row("DATE", date, y); y += 22 * k;
+  row("SEED", time, y); y += 22 * k + 6 * k;
+  dash(y); y += 14 * k;
+  p.image(g, M, y); g.remove(); y += artH + 14 * k;
+  dash(y); y += 16 * k;
+  p.fill(0); p.textAlign(p.CENTER, p.TOP); p.textSize(22 * k);
+  for (const l of lines) { p.text(l, W / 2, y); y += 21 * k; }
+  y += 12 * k;
+
+  // Barcode from the seed's bits
+  const u = Math.max(1, Math.round(2 * k)), bars = [1, 1, 1, 1];
+  const bits = (st.seed.toString(2).padStart(32, "0") + ((Math.imul(st.seed, 2654435761) >>> 16).toString(2).padStart(16, "0"))).split("");
+  for (const b of bits) bars.push(b === "1" ? 3 : 1, 1);
+  bars.push(1, 1, 1);
+  let x = Math.round((W - bars.reduce((a, b) => a + b, 0) * u) / 2);
+  bars.forEach((w, i) => { if (i % 2 === 0) p.rect(x, y, w * u, 44 * k); x += w * u; });
+  y += 48 * k;
+  p.textSize(20 * k); p.text(String(st.seed), W / 2, y); y += 22 * k;
+  p.text("THANK YOU FOR FEELING", W / 2, y); y += 30 * k;
+  p.textSize(18 * k); p.text("- - - - - TEAR HERE - - - - -", W / 2, y);
+
+  // Force every pixel to pure black or white for the thermal head
+  p.loadPixels();
+  const px = p.pixels;
+  for (let i = 0; i < px.length; i += 4) {
+    const c = (px[i] * 0.299 + px[i + 1] * 0.587 + px[i + 2] * 0.114) < 170 ? 0 : 255;
+    px[i] = px[i + 1] = px[i + 2] = c; px[i + 3] = 255;
+  }
+  p.updatePixels();
+}
+
+// ---------- App ----------
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const grid = document.getElementById("grid");
+const img = document.getElementById("receipt");
+const machine = document.getElementById("machine");
+const statusEl = document.getElementById("status");
+const state = { i: 0, time: null, seed: 0, width: 384 };
+let P = null, ready = false;
+
+MOODS.forEach((m, i) => {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "tile"; b.id = "mood-" + m.name.toLowerCase();
+  b.setAttribute("aria-pressed", "false");
+  b.innerHTML = `<span class="tile-name">${m.name}</span><span class="tile-tech">${m.tech}</span>`;
+  b.addEventListener("click", () => { choose(i); closeOverlay(); });
+  grid.appendChild(b);
+});
+
+function choose(i) {
+  state.i = i; state.time = new Date(); state.seed = timeSeed(state.time);
+  render();
+}
+
+function render() {
+  document.querySelectorAll(".tile").forEach((t, j) => t.setAttribute("aria-pressed", String(j === state.i)));
+  if (!P || !ready || !state.time) return;
+  buildReceipt(P, state);
+  img.src = P.canvas.toDataURL("image/png");
+  img.alt = `Mood receipt: ${MOODS[state.i].name}, ${MOODS[state.i].tech}, seeded by ${state.time.toLocaleTimeString()}`;
+  img.hidden = false;
+  statusEl.textContent = "";
+  machine.classList.remove("printing"); void machine.offsetWidth; machine.classList.add("printing");
+  clearTimeout(render.t); render.t = setTimeout(() => machine.classList.remove("printing"), reduceMotion ? 0 : 2500);
+}
+
+new p5(p => {
+  P = p;
+  p.setup = () => {
+    p.pixelDensity(1);
+    p.createCanvas(384, 384).hide();
+    const fontLoad = document.fonts ? document.fonts.load('22px "VT323"') : Promise.resolve();
+    Promise.race([fontLoad, new Promise(r => setTimeout(r, 2000))]).then(() => { ready = true; state.time ? render() : choose(0); });
+  };
+});
+
+// ---------- Overlay ----------
+const overlay = document.getElementById("overlay");
+const page = document.getElementById("page");
+const openBtn = document.getElementById("open-moods");
+function openOverlay() {
+  overlay.classList.remove("closed");
+  page.inert = true;
+  const pressed = grid.querySelector('[aria-pressed="true"]') || grid.querySelector(".tile");
+  setTimeout(() => pressed && pressed.focus({ preventScroll: true }), 30);
+}
+function closeOverlay() {
+  overlay.classList.add("closed");
+  page.inert = false;
+  openBtn.focus({ preventScroll: true });
+}
+openBtn.addEventListener("click", openOverlay);
+document.getElementById("paper").addEventListener("click", openOverlay);
+document.getElementById("paper").addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openOverlay(); } });
+document.getElementById("close-overlay").addEventListener("click", closeOverlay);
+overlay.addEventListener("click", e => { if (e.target === overlay) closeOverlay(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !overlay.classList.contains("closed")) closeOverlay(); });
+page.inert = true;
+
+// ---------- Controls ----------
+document.getElementById("again").addEventListener("click", () => choose(state.i));
+document.getElementById("reprint").addEventListener("click", render);
+document.querySelectorAll('input[name="paper"]').forEach(r => r.addEventListener("change", () => { state.width = Number(r.value); render(); }));
+document.getElementById("copy").addEventListener("click", async () => {
+  try {
+    const blob = new Promise(res => P.canvas.toBlob(res, "image/png"));
+    await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+    statusEl.textContent = "Copied. Paste it into your printer app.";
+  } catch (e) {
+    statusEl.textContent = "Copying isn't allowed here. Right-click or long-press the receipt to save it.";
+  }
+});
+</script>
+
+</body></html>
