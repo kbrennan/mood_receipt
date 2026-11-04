@@ -14,9 +14,10 @@ from PIL import Image
 
 QUEUE = "PL80E"
 USB_ID = ("0483", "2025")  # The printer disappears from USB when it's switched off.
-# A 4x6 label at 203 dpi is 812x1218 dots; the page draws slightly inside that.
+# The page draws 800x1200, slightly inside a 4x6 label at 203 dpi (812x1218 dots).
 LABEL_W, LABEL_H = 800, 1200
-OFFSET_X, OFFSET_Y = (812 - LABEL_W) // 2, (1218 - LABEL_H) // 2
+SHEET_W, SHEET_H = 812, 1218
+ROW_BYTES = (SHEET_W + 7) // 8
 
 ROOT = Path(__file__).resolve().parent
 app = Flask(__name__, static_folder=str(ROOT / "static"), static_url_path="")
@@ -34,12 +35,17 @@ def png_to_tspl(png: bytes) -> bytes:
     if image.size != (LABEL_W, LABEL_H):
         raise ValueError(f"expected {LABEL_W}x{LABEL_H}, got {image.width}x{image.height}")
     mono = image.convert("L").point(lambda v: 255 if v >= 128 else 0).convert("1", dither=Image.Dither.NONE)
+    # Labels come out of the printer the other way up from how Karen wants them, so turn the image.
+    mono = mono.transpose(Image.Transpose.ROTATE_180)
+    # Center by padding with white inside a full-label bitmap at 0,0, a format confirmed on the PL80E.
+    sheet = Image.new("1", (ROW_BYTES * 8, SHEET_H), 1)
+    sheet.paste(mono, ((SHEET_W - LABEL_W) // 2, (SHEET_H - LABEL_H) // 2))
     # Mode "1" packs rows MSB first with white as 1, which is what TSPL's BITMAP expects.
     header = (
-        "SIZE 4,6\r\nGAP 0.12,0\r\nDIRECTION 1\r\nCLS\r\n"
-        f"BITMAP {OFFSET_X},{OFFSET_Y},{LABEL_W // 8},{LABEL_H},0,"
+        "SIZE 4,6\r\nGAP 0.12,0\r\nDIRECTION 1\r\nDENSITY 8\r\nCLS\r\n"
+        f"BITMAP 0,0,{ROW_BYTES},{SHEET_H},0,"
     ).encode("ascii")
-    return header + mono.tobytes() + b"\r\nPRINT 1\r\n"
+    return header + sheet.tobytes() + b"\r\nPRINT 1\r\n"
 
 
 def printer_problem() -> str | None:
