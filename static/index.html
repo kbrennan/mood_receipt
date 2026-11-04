@@ -1,242 +1,126 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
-<title>Sixteen Moods</title>
-<meta name="claude:viewport-fit-sides" content="cover">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&family=Recursive:slnt,wght,CASL,MONO@-15..0,300..1000,0..1,0..1&display=swap">
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mood Receipt</title>
 <style>
-/* Layout: one narrow column built around a receipt printer; the mood picker is a full-screen overlay. */
+/* Built for a 720x1280 portrait touch screen: everything fits with no scrolling. */
+@font-face { font-family: "VT323"; src: url("vendor/VT323.woff2") format("woff2"); font-display: block; }
+@font-face { font-family: "Recursive"; src: url("vendor/Recursive.woff2") format("woff2"); font-weight: 300 1000; font-display: swap; }
 :root {
-  --bg: #e4e6eb;
-  --surface: #f3f4f7;
-  --fg: #15161a;
-  --muted: #5d616c;
-  --line: #c7cad2;
-  --printer: #23252b;
-  --printer-ink: #c9ccd4;
-  --led: #ff4a3d;
-  --paper: #ffffff;
-  --scrim: rgba(228, 230, 235, 0.66);
+  --bg: #101114; --surface: #1a1b20; --fg: #eceef2; --muted: #9297a2; --line: #2d2f36;
+  --printer: #30333b; --printer-ink: #b7bbc5; --led: #ff4a3d; --paper: #ffffff;
+  --scrim: rgba(16, 17, 20, 0.86);
   --pixel: "VT323", ui-monospace, "Courier New", monospace;
   --font: "Recursive", ui-rounded, system-ui, sans-serif;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #101114; --surface: #1a1b20; --fg: #eceef2; --muted: #9297a2; --line: #2d2f36;
-    --printer: #30333b; --printer-ink: #b7bbc5; --scrim: rgba(16, 17, 20, 0.72);
-    color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #101114; --surface: #1a1b20; --fg: #eceef2; --muted: #9297a2; --line: #2d2f36;
-  --printer: #30333b; --printer-ink: #b7bbc5; --scrim: rgba(16, 17, 20, 0.72);
   color-scheme: dark;
 }
-* { box-sizing: border-box; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; margin: 0; overflow: hidden; }
 body {
-  background: var(--bg);
-  color: var(--fg);
-  font-family: var(--font);
-  font-variation-settings: "CASL" 0.4;
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: 24px 48px;
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font); font-variation-settings: "CASL" 0.4;
+  user-select: none; -webkit-user-select: none; touch-action: manipulation;
 }
-.wrap { max-width: 460px; margin: 0 auto; display: grid; gap: 20px; }
-.topbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
-h1, .overlay-title {
-  margin: 0;
-  font-family: var(--pixel);
-  font-weight: 400;
-  line-height: 0.9;
-  letter-spacing: 0.01em;
-  text-transform: uppercase;
-  text-wrap: balance;
+/* Touch only: labwc turns taps into mouse events, which would otherwise show a pointer. */
+body.kiosk, body.kiosk * { cursor: none !important; }
+.wrap {
+  height: 100%; max-width: 720px; margin: 0 auto; padding: 14px 16px 16px;
+  display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 14px;
 }
-h1 { font-size: clamp(2.4rem, 9vw, 3.2rem); }
-
-.btn {
-  font: inherit;
-  font-size: 0.88rem;
-  font-weight: 650;
-  padding: 9px 14px;
-  border-radius: 999px;
-  border: 1.5px solid var(--fg);
-  background: transparent;
-  color: var(--fg);
-  cursor: pointer;
-}
-.btn.primary { background: var(--fg); color: var(--bg); }
-.btn:hover { transform: translateY(-1px); }
-.btn:focus-visible, .tile:focus-visible, .seg input:focus-visible + span, .paper:focus-visible {
-  outline: 3px solid var(--led); outline-offset: 2px;
-}
-
-/* The printer */
-.machine { display: grid; justify-items: center; }
+.machine { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; }
 .printer {
-  position: relative;
-  z-index: 2;
-  width: 100%;
-  background: var(--printer);
-  border-radius: 16px 16px 8px 8px;
-  padding: 12px 16px 12px;
-  display: grid;
-  gap: 10px;
+  position: relative; z-index: 2;
+  background: var(--printer); border-radius: 16px 16px 8px 8px;
+  padding: 12px 16px; display: grid; gap: 10px;
   box-shadow: 0 10px 24px -14px rgba(0, 0, 0, 0.6);
 }
-.printer-top { display: flex; justify-content: space-between; align-items: center; }
-.brand { font-family: var(--pixel); font-size: 1.15rem; letter-spacing: 0.14em; color: var(--printer-ink); }
-.led { width: 9px; height: 9px; border-radius: 50%; background: var(--led); opacity: 0.35; }
+.printer-top { display: flex; justify-content: space-between; align-items: center; min-height: 32px; overflow: hidden; position: relative; }
+.brand { font-family: var(--pixel); font-size: 1.7rem; letter-spacing: 0.14em; color: var(--printer-ink); }
+.led { width: 12px; height: 12px; border-radius: 50%; background: var(--led); opacity: 0.35; }
 .machine.printing .led { animation: blink 0.3s steps(2) infinite; }
 @keyframes blink { 50% { opacity: 1; } }
+/* Fill bar shown while holding the printer's name to leave kiosk mode. */
+.hold-bar { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: var(--led); transform: scaleX(0); transform-origin: left; }
+.printer-top.holding .hold-bar { transform: scaleX(1); transition: transform 3s linear; }
 .slot { height: 7px; border-radius: 4px; background: #000; margin-inline: 4px; }
 .paper {
-  position: relative;
-  z-index: 1;
-  width: calc(100% - 40px);
-  margin-top: -14px;
-  padding-top: 10px;
-  background: var(--paper);
+  position: relative; z-index: 1; height: 100%; min-height: 0; aspect-ratio: 2 / 3; max-width: 100%;
+  margin: -14px auto 0; padding-top: 10px; background: var(--paper);
   box-shadow: 0 14px 30px -18px rgba(0, 0, 0, 0.55);
-  cursor: pointer;
 }
-.paper img {
-  display: block;
-  width: 100%;
-  height: auto;
-  max-width: 100%;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
-}
+.paper img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .machine.printing .paper img { animation: print 2.4s steps(56, end) both; }
-@keyframes print {
-  from { clip-path: inset(0 0 100% 0); }
-  to { clip-path: inset(0 0 0 0); }
-}
+@keyframes print { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0 0 0 0); } }
 
-.controls { display: grid; gap: 12px; }
-.actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.seg { border: 0; margin: 0; padding: 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.seg legend { float: left; margin-right: 6px; font-size: 0.82rem; color: var(--muted); }
-.seg label { position: relative; }
-.seg input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
-.seg span {
-  display: inline-block;
-  font-family: var(--pixel);
-  font-size: 1.1rem;
-  padding: 3px 10px;
-  border: 1.5px solid var(--line);
-  border-radius: 6px;
+.controls { display: grid; gap: 10px; }
+.btn {
+  font: inherit; font-size: 1.15rem; font-weight: 650; min-height: 64px; padding: 10px 16px;
+  border-radius: 999px; border: 2px solid var(--fg); background: transparent; color: var(--fg);
 }
-.seg input:checked + span { border-color: var(--fg); background: var(--fg); color: var(--bg); }
-.status { margin: 0; min-height: 1.3em; font-size: 0.85rem; color: var(--muted); }
-.how { margin: 0; font-size: 0.84rem; color: var(--muted); line-height: 1.55; }
-.how code { font-variation-settings: "MONO" 1; color: var(--fg); }
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: 0.45; }
+.btn.primary { background: var(--fg); color: var(--bg); font-size: 1.5rem; min-height: 84px; width: 100%; }
+.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.status { margin: 0; min-height: 1.4em; font-size: 1rem; text-align: center; color: var(--muted); }
+.status.error { color: var(--led); }
 
 /* Mood picker overlay */
 .overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 20;
-  display: grid;
-  place-items: center;
-  overflow-y: auto;
-  padding-block: calc(24px + env(safe-area-inset-top, 0px)) calc(24px + env(safe-area-inset-bottom, 0px));
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
-  background: var(--scrim);
-  -webkit-backdrop-filter: blur(14px) grayscale(1);
-  backdrop-filter: blur(14px) grayscale(1);
+  position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 16px;
+  background: var(--scrim); -webkit-backdrop-filter: blur(14px) grayscale(1); backdrop-filter: blur(14px) grayscale(1);
   transition: opacity .3s ease, visibility .3s;
 }
 .overlay.closed { opacity: 0; visibility: hidden; pointer-events: none; }
-.panel { width: min(100%, 640px); display: grid; gap: 18px; transition: transform .3s ease; }
-.overlay.closed .panel { transform: translateY(14px) scale(0.97); }
-.overlay-head { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
-.overlay-head .intro { display: grid; gap: 8px; }
-.overlay-title { font-size: clamp(2.2rem, 7vw, 3rem); }
-.lede { margin: 0; color: var(--muted); font-size: 0.95rem; line-height: 1.5; max-width: 46ch; }
-.btn.icon { width: 40px; height: 40px; padding: 0; font-size: 1.3rem; line-height: 1; flex: none; }
-.grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.panel { width: 100%; display: grid; gap: 22px; }
+.overlay-title { margin: 0; font-family: var(--pixel); font-weight: 400; font-size: 4rem; line-height: 0.9; text-transform: uppercase; text-wrap: balance; }
+.lede { margin: 10px 0 0; color: var(--muted); font-size: 1.15rem; line-height: 1.45; }
+.grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 .tile {
-  font: inherit;
-  text-align: left;
-  display: grid;
-  gap: 2px;
-  padding: 10px 10px 9px;
-  border-radius: 8px;
-  border: 1.5px solid var(--line);
-  background: var(--surface);
-  color: var(--fg);
-  cursor: pointer;
-  min-width: 0;
-  transition: transform .12s ease, border-color .12s ease;
+  font: inherit; text-align: left; display: grid; gap: 6px; align-content: start; min-height: 150px; padding: 14px 10px;
+  border-radius: 10px; border: 2px solid var(--line); background: var(--surface); color: var(--fg); min-width: 0;
 }
-.tile:hover { transform: translateY(-2px) rotate(-0.8deg); border-color: var(--muted); }
-.tile[aria-pressed="true"] { border-color: var(--fg); box-shadow: inset 0 0 0 1.5px var(--fg); }
-.tile-name { font-size: 0.92rem; font-weight: 750; font-variation-settings: "CASL" 1; overflow-wrap: anywhere; }
-.tile-tech { font-family: var(--pixel); font-size: 1.02rem; line-height: 1; color: var(--muted); overflow-wrap: anywhere; }
-@media (max-width: 440px) {
-  .grid { gap: 6px; }
-  .tile { padding: 8px 7px 7px; }
-  .tile-name { font-size: 0.8rem; }
-  .tile-tech { font-size: 0.9rem; }
-}
+.tile:active { transform: scale(0.97); border-color: var(--muted); }
+.tile[aria-pressed="true"] { border-color: var(--fg); }
+.tile-name { font-size: 1.1rem; font-weight: 750; font-variation-settings: "CASL" 1; overflow-wrap: anywhere; }
+.tile-tech { font-family: var(--pixel); font-size: 1.25rem; line-height: 1; color: var(--muted); overflow-wrap: anywhere; }
 @media (prefers-reduced-motion: reduce) {
-  .tile, .btn, .overlay, .panel { transition: none; }
-  .tile:hover, .btn:hover { transform: none; }
+  .overlay { transition: none; }
   .machine.printing .paper img, .machine.printing .led { animation: none; }
 }
 </style>
-
+</head>
+<body>
 <div class="wrap" id="page">
-  <header class="topbar">
-    <h1>Sixteen Moods</h1>
-    <button class="btn" id="open-moods" type="button">Choose a mood</button>
-  </header>
-
   <section class="machine" id="machine" aria-label="Receipt printer">
     <div class="printer">
-      <div class="printer-top"><span class="brand">MOOD-O-MATIC</span><span class="led" aria-hidden="true"></span></div>
+      <div class="printer-top" id="brand"><span class="brand">MOOD-O-MATIC</span><span class="led" aria-hidden="true"></span><span class="hold-bar" aria-hidden="true"></span></div>
       <div class="slot"></div>
     </div>
-    <div class="paper" id="paper" tabindex="0" role="button" aria-label="Choose a new mood">
-      <img id="receipt" alt="A black and white mood receipt" hidden>
-    </div>
+    <div class="paper" id="paper"><img id="receipt" alt="A black and white mood receipt" hidden></div>
   </section>
-
   <div class="controls">
+    <button class="btn primary" id="print" type="button">Print my receipt</button>
     <div class="actions">
-      <button class="btn primary" id="again" type="button">Print again</button>
-      <button class="btn" id="reprint" type="button">Reprint same second</button>
-      <button class="btn" id="copy" type="button">Copy image</button>
+      <button class="btn" id="again" type="button">New receipt</button>
+      <button class="btn" id="open-moods" type="button">Change mood</button>
     </div>
-    <fieldset class="seg">
-      <legend>Paper</legend>
-      <label><input type="radio" name="paper" id="paper-58" value="384" checked><span>58 mm</span></label>
-      <label><input type="radio" name="paper" id="paper-80" value="576"><span>80 mm</span></label>
-    </fieldset>
-    <p class="status" id="status" aria-live="polite"></p>
+    <p class="status" id="status" role="status" aria-live="polite"></p>
   </div>
-
-  <p class="how">The seed is only the time: the current second goes through a hash into <code>randomSeed()</code> and <code>noiseSeed()</code>. Your mood picks the drawing technique, and the clock decides everything else. Every pixel is pure black or white, sized to a real thermal printer (384 dots for 58&nbsp;mm paper, 576 for 80&nbsp;mm). To save it, copy it or right-click / long-press the receipt.</p>
 </div>
 
 <div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="overlay-title">
   <div class="panel">
-    <div class="overlay-head">
-      <div class="intro">
-        <h2 class="overlay-title" id="overlay-title">How are you feeling?</h2>
-        <p class="lede">Pick a mood and the printer makes you a receipt from this exact second. Come back a second later and it will be different.</p>
-      </div>
-      <button class="btn icon" id="close-overlay" type="button" aria-label="Close mood picker">×</button>
+    <div>
+      <h2 class="overlay-title" id="overlay-title">How are you feeling?</h2>
+      <p class="lede">Pick a mood and the printer makes you a receipt from this exact second. Come back a second later and it will be different.</p>
     </div>
     <div class="grid" id="grid" role="group" aria-label="Moods"></div>
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+<script src="vendor/p5.min.js"></script>
 <script>
 // ---------- Moods: each one picks a 1-bit drawing technique ----------
 const MOODS = [
@@ -456,7 +340,7 @@ const GEN = {
   },
 
   sigil(p, g, W, H) {
-    const gs = W / 12, cx = W / 2, cy = H / 2;
+    const gs = Math.min(W, H) / 12, cx = W / 2, cy = H / 2;
     const dirs = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]];
     const pts = [[0, Math.floor(p.random(-3, 4))]];
     for (let s = 0; s < 40 && pts.length < 26; s++) {
@@ -515,23 +399,25 @@ function wrapText(p, text, maxW) {
 }
 const pad = n => String(n).padStart(2, "0");
 
-// ---------- Build the receipt ----------
+// ---------- Build the receipt: a 4x6 label at 203 dpi, drawn 1:1 in printer dots ----------
+const LABEL_W = 800, LABEL_H = 1200;
 function buildReceipt(p, st) {
-  const W = st.width, k = W / 384, M = Math.round(12 * k);
+  const W = LABEL_W, H = LABEL_H, k = 1.5, M = 18;
   const mood = MOODS[st.i];
-  const artW = W - 2 * M, artH = Math.round(artW * 1.3);
+  const artW = W - 2 * M;
+  // Everything above and below the art is a fixed height; the art takes what remains.
+  const above = M + 10 * k + 34 * k + 26 * k + 14 * k + 3 * 22 * k + 6 * k + 14 * k;
+  const below = 14 * k + 16 * k + 2 * 21 * k + 12 * k + 48 * k + 22 * k + 30 * k + 22 * k + M;
+  const artH = Math.round(H - above - below);
 
   p.randomSeed(st.seed); p.noiseSeed(st.seed); p.noiseDetail(4, 0.5);
   const g = p.createGraphics(artW, artH);
   g.pixelDensity(1); g.background(255);
   GEN[mood.gen](p, g, artW, artH);
 
+  p.background(255);
   p.textFont("VT323"); p.textSize(22 * k);
   const lines = wrapText(p, fortune(p), W - 2 * M);
-  const H = Math.round(M + 10 * k + 34 * k + 26 * k + 14 * k + 3 * 22 * k + 6 * k + 14 * k + artH + 14 * k + 16 * k
-                      + lines.length * 21 * k + 12 * k + 48 * k + 22 * k + 30 * k + 22 * k + M);
-  p.resizeCanvas(W, H);
-  p.background(255);
 
   const dash = y => { p.stroke(0); p.strokeWeight(2 * k); for (let x = M; x < W - M; x += 10 * k) p.line(x, y, x + 5 * k, y); p.noStroke(); };
   const row = (label, value, y) => {
@@ -543,7 +429,7 @@ function buildReceipt(p, st) {
 
   const t = st.time, date = `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}`;
   const time = `${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())}`;
-  p.fill(0); p.noStroke(); p.textFont("VT323");
+  p.fill(0); p.noStroke();
   let y = M + 10 * k;
   p.textAlign(p.CENTER, p.TOP); p.textSize(34 * k); p.text("SIXTEEN MOODS", W / 2, y); y += 34 * k;
   p.textSize(20 * k); p.text(`MOOD RECEIPT NO. ${String(st.seed % 100000).padStart(5, "0")}`, W / 2, y); y += 26 * k;
@@ -556,8 +442,10 @@ function buildReceipt(p, st) {
   p.image(g, M, y); g.remove(); y += artH + 14 * k;
   dash(y); y += 16 * k;
   p.fill(0); p.textAlign(p.CENTER, p.TOP); p.textSize(22 * k);
-  for (const l of lines) { p.text(l, W / 2, y); y += 21 * k; }
-  y += 12 * k;
+  // Two lines are always reserved, so a one-line fortune sits in the middle of them.
+  let fy = y + (2 - lines.length) * 21 * k / 2;
+  for (const l of lines) { p.text(l, W / 2, fy); fy += 21 * k; }
+  y += 2 * 21 * k + 12 * k;
 
   // Barcode from the seed's bits
   const u = Math.max(1, Math.round(2 * k)), bars = [1, 1, 1, 1];
@@ -582,25 +470,34 @@ function buildReceipt(p, st) {
 }
 
 // ---------- App ----------
+const params = new URLSearchParams(location.search);
+// ?kiosk is set by the launcher. ?mood=<0-15>&t=<epoch seconds> recreates one exact receipt.
+if (params.has("kiosk")) document.body.classList.add("kiosk");
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const grid = document.getElementById("grid");
 const img = document.getElementById("receipt");
 const machine = document.getElementById("machine");
 const statusEl = document.getElementById("status");
-const state = { i: 0, time: null, seed: 0, width: 384 };
+const printBtn = document.getElementById("print");
+const state = { i: 0, time: null, seed: 0 };
 let P = null, ready = false;
+
+function setStatus(text, isError = false) {
+  statusEl.textContent = text;
+  statusEl.classList.toggle("error", isError);
+}
 
 MOODS.forEach((m, i) => {
   const b = document.createElement("button");
   b.type = "button"; b.className = "tile"; b.id = "mood-" + m.name.toLowerCase();
   b.setAttribute("aria-pressed", "false");
   b.innerHTML = `<span class="tile-name">${m.name}</span><span class="tile-tech">${m.tech}</span>`;
-  b.addEventListener("click", () => { choose(i); closeOverlay(); });
+  b.addEventListener("click", () => { closeOverlay(); choose(i); });
   grid.appendChild(b);
 });
 
-function choose(i) {
-  state.i = i; state.time = new Date(); state.seed = timeSeed(state.time);
+function choose(i, date = new Date()) {
+  state.i = i; state.time = date; state.seed = timeSeed(date);
   render();
 }
 
@@ -611,7 +508,7 @@ function render() {
   img.src = P.canvas.toDataURL("image/png");
   img.alt = `Mood receipt: ${MOODS[state.i].name}, ${MOODS[state.i].tech}, seeded by ${state.time.toLocaleTimeString()}`;
   img.hidden = false;
-  statusEl.textContent = "";
+  setStatus("");
   machine.classList.remove("printing"); void machine.offsetWidth; machine.classList.add("printing");
   clearTimeout(render.t); render.t = setTimeout(() => machine.classList.remove("printing"), reduceMotion ? 0 : 2500);
 }
@@ -620,48 +517,65 @@ new p5(p => {
   P = p;
   p.setup = () => {
     p.pixelDensity(1);
-    p.createCanvas(384, 384).hide();
+    p.createCanvas(LABEL_W, LABEL_H).hide();
+    p.noLoop();
     const fontLoad = document.fonts ? document.fonts.load('22px "VT323"') : Promise.resolve();
-    Promise.race([fontLoad, new Promise(r => setTimeout(r, 2000))]).then(() => { ready = true; state.time ? render() : choose(0); });
+    Promise.race([fontLoad, new Promise(r => setTimeout(r, 2000))]).then(() => {
+      ready = true;
+      if (params.has("mood")) {
+        closeOverlay();
+        const t = Number(params.get("t"));
+        choose(mod(Number(params.get("mood")) || 0, MOODS.length), t ? new Date(t * 1000) : new Date());
+      } else if (state.time) render();
+    });
   };
 });
 
 // ---------- Overlay ----------
 const overlay = document.getElementById("overlay");
 const page = document.getElementById("page");
-const openBtn = document.getElementById("open-moods");
-function openOverlay() {
-  overlay.classList.remove("closed");
-  page.inert = true;
-  const pressed = grid.querySelector('[aria-pressed="true"]') || grid.querySelector(".tile");
-  setTimeout(() => pressed && pressed.focus({ preventScroll: true }), 30);
-}
-function closeOverlay() {
-  overlay.classList.add("closed");
-  page.inert = false;
-  openBtn.focus({ preventScroll: true });
-}
-openBtn.addEventListener("click", openOverlay);
-document.getElementById("paper").addEventListener("click", openOverlay);
-document.getElementById("paper").addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openOverlay(); } });
-document.getElementById("close-overlay").addEventListener("click", closeOverlay);
-overlay.addEventListener("click", e => { if (e.target === overlay) closeOverlay(); });
-document.addEventListener("keydown", e => { if (e.key === "Escape" && !overlay.classList.contains("closed")) closeOverlay(); });
+function openOverlay() { overlay.classList.remove("closed"); page.inert = true; }
+function closeOverlay() { overlay.classList.add("closed"); page.inert = false; }
+document.getElementById("open-moods").addEventListener("click", openOverlay);
 page.inert = true;
 
 // ---------- Controls ----------
 document.getElementById("again").addEventListener("click", () => choose(state.i));
-document.getElementById("reprint").addEventListener("click", render);
-document.querySelectorAll('input[name="paper"]').forEach(r => r.addEventListener("change", () => { state.width = Number(r.value); render(); }));
-document.getElementById("copy").addEventListener("click", async () => {
-  try {
-    const blob = new Promise(res => P.canvas.toBlob(res, "image/png"));
-    await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
-    statusEl.textContent = "Copied. Paste it into your printer app.";
-  } catch (e) {
-    statusEl.textContent = "Copying isn't allowed here. Right-click or long-press the receipt to save it.";
-  }
-});
-</script>
 
-</body></html>
+printBtn.addEventListener("click", async () => {
+  if (printBtn.disabled || !state.time) return;
+  printBtn.disabled = true;
+  setStatus("Sending to the printer…");
+  try {
+    const blob = await new Promise(res => P.canvas.toBlob(res, "image/png"));
+    const r = await fetch("print", { method: "POST", headers: { "Content-Type": "image/png" }, body: blob });
+    const j = await r.json();
+    setStatus(j.message, !r.ok);
+  } catch (e) {
+    setStatus("Couldn't reach the print server.", true);
+  }
+  // A short pause so an excited double-tap doesn't print two labels.
+  setTimeout(() => { printBtn.disabled = false; }, 2000);
+});
+
+// ---------- Leaving kiosk mode: hold the printer's name for 3 seconds ----------
+const brand = document.getElementById("brand");
+let holdTimer = null;
+function endHold() { clearTimeout(holdTimer); holdTimer = null; brand.classList.remove("holding"); }
+brand.addEventListener("pointerdown", e => {
+  brand.setPointerCapture(e.pointerId);
+  brand.classList.add("holding");
+  holdTimer = setTimeout(async () => {
+    endHold();
+    setStatus("Leaving kiosk mode…");
+    try {
+      const r = await fetch("exit", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      if (!r.ok) setStatus((await r.json()).message, true);
+    } catch (e) { /* The server is shutting down along with this window. */ }
+  }, 3000);
+});
+["pointerup", "pointercancel"].forEach(t => brand.addEventListener(t, endHold));
+document.addEventListener("contextmenu", e => e.preventDefault());
+</script>
+</body>
+</html>
