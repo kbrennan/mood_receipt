@@ -4,7 +4,7 @@ Pick a mood on a touch screen and get a generative art receipt, seeded by the cu
 
 ## Run it
 
-- **Kiosk:** press `Ctrl+Alt+K`, open "Mood Receipt Kiosk" from the app menu, or run `kiosk/mood-kiosk.sh`.
+- **Kiosk:** it starts at boot. To start it by hand, press `Ctrl+Alt+K`, open "Mood Receipt Kiosk" from the app menu, or run `kiosk/mood-kiosk.sh`.
 - **Leave the kiosk:** hold anywhere along the top strip of the screen for 3 seconds, press `Ctrl+Alt+K`, or run `kiosk/mood-kiosk.sh stop`.
 - **Without the kiosk or real printing:** run `python3 server.py --dry-run /tmp` and open http://127.0.0.1:8765/. Print jobs are saved to `last.tspl` in that folder.
 
@@ -36,3 +36,5 @@ Needs a CUPS raw queue named `PL80E`, plus `python3-flask` and `python3-pil`.
 ```
 
 The app menu entry is `~/.local/share/applications/mood-receipt.desktop`, which runs `kiosk/mood-kiosk.sh start`.
+
+The kiosk starts at login through `~/.config/autostart/mood-receipt.desktop`, which has the same contents. Delete that file to stop it starting automatically. This Pi logs in automatically, so that means at boot.
