@@ -27,17 +27,16 @@ body {
 body.kiosk, body.kiosk * { cursor: none !important; }
 .wrap {
   height: 100%; max-width: 720px; margin: 0 auto; padding: 14px 16px 16px;
-  display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 14px;
+  display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; gap: 14px;
 }
-.machine { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; }
+.machine { container-type: size; display: flex; flex-direction: column; align-items: center; min-height: 0; }
 .printer {
-  position: relative; z-index: 2;
+  position: relative; z-index: 2; width: 100%;
   background: var(--printer); border-radius: 16px 16px 8px 8px;
   padding: 12px 16px; display: grid; gap: 10px;
   box-shadow: 0 10px 24px -14px rgba(0, 0, 0, 0.6);
 }
-.printer-top { display: flex; justify-content: space-between; align-items: center; min-height: 32px; overflow: hidden; position: relative; }
-.brand { font-family: var(--pixel); font-size: 1.7rem; letter-spacing: 0.14em; color: var(--printer-ink); }
+.printer-top { display: flex; justify-content: flex-end; align-items: center; min-height: 32px; overflow: hidden; position: relative; }
 .led { width: 12px; height: 12px; border-radius: 50%; background: var(--led); opacity: 0.35; }
 .machine.printing .led { animation: blink 0.3s steps(2) infinite; }
 @keyframes blink { 50% { opacity: 1; } }
@@ -51,8 +50,10 @@ body.kiosk, body.kiosk * { cursor: none !important; }
 .exit-zone.holding .hold-bar { transform: scaleX(1); transition: transform 3s linear; }
 .slot { height: 7px; border-radius: 4px; background: #000; margin-inline: 4px; }
 .paper {
-  position: relative; z-index: 1; height: 100%; min-height: 0; aspect-ratio: 2 / 3; max-width: 100%;
-  margin: -14px auto 0; padding-top: 10px; background: var(--paper);
+  /* As big as fits below the printer (73px tall, overlapped by 14px), and always narrower than it. */
+  position: relative; z-index: 1; flex: none; aspect-ratio: 2 / 3;
+  width: min(100cqw - 40px, (100cqh - 59px) * 2 / 3);
+  margin-top: -14px; padding-top: 10px; background: var(--paper);
   box-shadow: 0 14px 30px -18px rgba(0, 0, 0, 0.55);
 }
 .paper img { display: block; width: 100%; height: 100%; object-fit: contain; }
@@ -61,13 +62,13 @@ body.kiosk, body.kiosk * { cursor: none !important; }
 
 .controls { display: grid; gap: 10px; }
 .btn {
-  font: inherit; font-size: 1.15rem; font-weight: 650; min-height: 64px; padding: 10px 16px;
+  font: inherit; font-size: 1.25rem; font-weight: 650; min-height: 84px; padding: 10px 16px;
   border-radius: 999px; border: 2px solid var(--fg); background: transparent; color: var(--fg);
 }
 .btn:active { transform: translateY(1px); }
 .btn:disabled { opacity: 0.45; }
-.btn.primary { background: var(--fg); color: var(--bg); font-size: 1.5rem; min-height: 84px; width: 100%; }
-.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.btn.primary { background: var(--fg); color: var(--bg); }
+.actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .status { margin: 0; min-height: 1.4em; font-size: 1rem; text-align: center; color: var(--muted); }
 .status.error { color: var(--led); }
 
@@ -79,17 +80,16 @@ body.kiosk, body.kiosk * { cursor: none !important; }
 }
 .overlay.closed { opacity: 0; visibility: hidden; pointer-events: none; }
 .panel { width: 100%; display: grid; gap: 22px; }
-.overlay-title { margin: 0; font-family: var(--pixel); font-weight: 400; font-size: 4rem; line-height: 0.9; text-transform: uppercase; text-wrap: balance; }
-.lede { margin: 10px 0 0; color: var(--muted); font-size: 1.15rem; line-height: 1.45; }
+.overlay-title { margin: 0; font-family: var(--pixel); font-weight: 400; font-size: 4rem; line-height: 0.9; text-transform: uppercase; text-wrap: balance; text-align: center; }
+.lede { margin: 10px 0 0; color: var(--muted); font-size: 1.15rem; line-height: 1.45; text-align: center; }
 .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 .tile {
-  font: inherit; text-align: left; display: grid; gap: 6px; align-content: start; min-height: 150px; padding: 14px 10px;
+  font: inherit; text-align: center; display: grid; place-items: center; min-height: 150px; padding: 14px 10px;
   border-radius: 10px; border: 2px solid var(--line); background: var(--surface); color: var(--fg); min-width: 0;
 }
 .tile:active { transform: scale(0.97); border-color: var(--muted); }
 .tile[aria-pressed="true"] { border-color: var(--fg); }
 .tile-name { font-size: 1.1rem; font-weight: 750; font-variation-settings: "CASL" 1; overflow-wrap: anywhere; }
-.tile-tech { font-family: var(--pixel); font-size: 1.25rem; line-height: 1; color: var(--muted); overflow-wrap: anywhere; }
 @media (prefers-reduced-motion: reduce) {
   .overlay { transition: none; }
   .machine.printing .paper img, .machine.printing .led { animation: none; }
@@ -100,16 +100,15 @@ body.kiosk, body.kiosk * { cursor: none !important; }
 <div class="wrap" id="page">
   <section class="machine" id="machine" aria-label="Receipt printer">
     <div class="printer">
-      <div class="printer-top" id="brand"><span class="brand">MOOD-O-MATIC</span><span class="led" aria-hidden="true"></span></div>
+      <div class="printer-top" id="brand"><span class="led" aria-hidden="true"></span></div>
       <div class="slot"></div>
     </div>
     <div class="paper" id="paper"><img id="receipt" alt="A black and white mood receipt" hidden></div>
   </section>
   <div class="controls">
-    <button class="btn primary" id="print" type="button">Print my receipt</button>
     <div class="actions">
-      <button class="btn" id="again" type="button">New receipt</button>
-      <button class="btn" id="open-moods" type="button">Change mood</button>
+      <button class="btn primary" id="print" type="button">Print my receipt</button>
+      <button class="btn" id="new-receipt" type="button">Create new receipt</button>
     </div>
     <p class="status" id="status" role="status" aria-live="polite"></p>
   </div>
@@ -119,7 +118,7 @@ body.kiosk, body.kiosk * { cursor: none !important; }
   <div class="panel">
     <div>
       <h2 class="overlay-title" id="overlay-title">How are you feeling?</h2>
-      <p class="lede">Pick a mood and the printer makes you a receipt from this exact second. Come back a second later and it will be different.</p>
+      <p class="lede">Pick a mood to prepare your receipt for this moment in time.</p>
     </div>
     <div class="grid" id="grid" role="group" aria-label="Moods"></div>
   </div>
@@ -413,7 +412,7 @@ function buildReceipt(p, st) {
   const mood = MOODS[st.i];
   const artW = W - 2 * M;
   // Everything above and below the art is a fixed height; the art takes what remains.
-  const above = M + 10 * k + 34 * k + 26 * k + 14 * k + 3 * 22 * k + 6 * k + 14 * k;
+  const above = M + 10 * k + 46 * k + 2 * 22 * k + 6 * k + 14 * k;
   const below = 14 * k + 16 * k + 2 * 21 * k + 12 * k + 48 * k + 22 * k + 30 * k + 22 * k + M;
   const artH = Math.round(H - above - below);
 
@@ -438,13 +437,11 @@ function buildReceipt(p, st) {
   const time = `${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())}`;
   p.fill(0); p.noStroke();
   let y = M + 10 * k;
-  p.textAlign(p.CENTER, p.TOP); p.textSize(34 * k); p.text("SIXTEEN MOODS", W / 2, y); y += 34 * k;
-  p.textSize(20 * k); p.text(`MOOD RECEIPT NO. ${String(st.seed % 100000).padStart(5, "0")}`, W / 2, y); y += 26 * k;
-  dash(y); y += 14 * k;
+  p.textAlign(p.CENTER, p.TOP); p.textSize(34 * k);
+  p.text(`MOOD RECEIPT NO. ${String(st.seed % 100000).padStart(5, "0")}`, W / 2, y); y += 46 * k;
   p.textSize(22 * k);
-  row("MOOD", mood.name.toUpperCase(), y); y += 22 * k;
   row("DATE", date, y); y += 22 * k;
-  row("SEED", time, y); y += 22 * k + 6 * k;
+  row("TIME", time, y); y += 22 * k + 6 * k;
   dash(y); y += 14 * k;
   p.image(g, M, y); g.remove(); y += artH + 14 * k;
   dash(y); y += 16 * k;
@@ -498,7 +495,7 @@ MOODS.forEach((m, i) => {
   const b = document.createElement("button");
   b.type = "button"; b.className = "tile"; b.id = "mood-" + m.name.toLowerCase();
   b.setAttribute("aria-pressed", "false");
-  b.innerHTML = `<span class="tile-name">${m.name}</span><span class="tile-tech">${m.tech}</span>`;
+  b.innerHTML = `<span class="tile-name">${m.name}</span>`;
   b.addEventListener("click", () => { closeOverlay(); choose(i); });
   grid.appendChild(b);
 });
@@ -543,12 +540,10 @@ const overlay = document.getElementById("overlay");
 const page = document.getElementById("page");
 function openOverlay() { overlay.classList.remove("closed"); page.inert = true; }
 function closeOverlay() { overlay.classList.add("closed"); page.inert = false; }
-document.getElementById("open-moods").addEventListener("click", openOverlay);
+document.getElementById("new-receipt").addEventListener("click", openOverlay);
 page.inert = true;
 
 // ---------- Controls ----------
-document.getElementById("again").addEventListener("click", () => choose(state.i));
-
 printBtn.addEventListener("click", async () => {
   if (printBtn.disabled || !state.time) return;
   printBtn.disabled = true;
