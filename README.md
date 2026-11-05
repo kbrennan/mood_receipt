@@ -5,7 +5,7 @@ Pick a mood on a touch screen and get a generative art receipt, seeded by the cu
 ## Run it
 
 - **Kiosk:** press `Ctrl+Alt+K`, open "Mood Receipt Kiosk" from the app menu, or run `kiosk/mood-kiosk.sh`.
-- **Leave the kiosk:** hold the MOOD-O-MATIC name at the top of the screen for 3 seconds, press `Ctrl+Alt+K`, or run `kiosk/mood-kiosk.sh stop`.
+- **Leave the kiosk:** hold anywhere along the top strip of the screen for 3 seconds, press `Ctrl+Alt+K`, or run `kiosk/mood-kiosk.sh stop`.
 - **Without the kiosk or real printing:** run `python3 server.py --dry-run /tmp` and open http://127.0.0.1:8765/. Print jobs are saved to `last.tspl` in that folder.
 
 `?mood=<0-15>&t=<epoch seconds>` on the URL recreates one exact receipt. Run the tests with `python3 tests/test_tspl.py`.

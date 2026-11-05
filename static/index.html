@@ -41,9 +41,14 @@ body.kiosk, body.kiosk * { cursor: none !important; }
 .led { width: 12px; height: 12px; border-radius: 50%; background: var(--led); opacity: 0.35; }
 .machine.printing .led { animation: blink 0.3s steps(2) infinite; }
 @keyframes blink { 50% { opacity: 1; } }
-/* Fill bar shown while holding the printer's name to leave kiosk mode. */
-.hold-bar { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: var(--led); transform: scaleX(0); transform-origin: left; }
-.printer-top.holding .hold-bar { transform: scaleX(1); transition: transform 3s linear; }
+/* Invisible strip across the top of every screen: hold it for 3 seconds to leave kiosk mode. */
+.exit-zone {
+  position: fixed; top: 0; left: 0; right: 0; height: 90px; z-index: 30; touch-action: none;
+  display: grid; place-items: center; font-size: 1.3rem; font-weight: 650; color: transparent;
+}
+.exit-zone.active { background: var(--bg); color: var(--fg); }
+.hold-bar { position: absolute; left: 0; bottom: 0; height: 8px; width: 100%; background: var(--led); transform: scaleX(0); transform-origin: left; }
+.exit-zone.holding .hold-bar { transform: scaleX(1); transition: transform 3s linear; }
 .slot { height: 7px; border-radius: 4px; background: #000; margin-inline: 4px; }
 .paper {
   position: relative; z-index: 1; height: 100%; min-height: 0; aspect-ratio: 2 / 3; max-width: 100%;
@@ -95,7 +100,7 @@ body.kiosk, body.kiosk * { cursor: none !important; }
 <div class="wrap" id="page">
   <section class="machine" id="machine" aria-label="Receipt printer">
     <div class="printer">
-      <div class="printer-top" id="brand"><span class="brand">MOOD-O-MATIC</span><span class="led" aria-hidden="true"></span><span class="hold-bar" aria-hidden="true"></span></div>
+      <div class="printer-top" id="brand"><span class="brand">MOOD-O-MATIC</span><span class="led" aria-hidden="true"></span></div>
       <div class="slot"></div>
     </div>
     <div class="paper" id="paper"><img id="receipt" alt="A black and white mood receipt" hidden></div>
@@ -119,6 +124,8 @@ body.kiosk, body.kiosk * { cursor: none !important; }
     <div class="grid" id="grid" role="group" aria-label="Moods"></div>
   </div>
 </div>
+
+<div class="exit-zone" id="exit-zone"><span id="exit-text"></span><span class="hold-bar" aria-hidden="true"></span></div>
 
 <script src="vendor/p5.min.js"></script>
 <script>
@@ -558,23 +565,30 @@ printBtn.addEventListener("click", async () => {
   setTimeout(() => { printBtn.disabled = false; }, 2000);
 });
 
-// ---------- Leaving kiosk mode: hold the printer's name for 3 seconds ----------
-const brand = document.getElementById("brand");
+// ---------- Leaving kiosk mode: hold the top strip of the screen for 3 seconds ----------
+const exitZone = document.getElementById("exit-zone");
+const exitText = document.getElementById("exit-text");
 let holdTimer = null;
-function endHold() { clearTimeout(holdTimer); holdTimer = null; brand.classList.remove("holding"); }
-brand.addEventListener("pointerdown", e => {
-  brand.setPointerCapture(e.pointerId);
-  brand.classList.add("holding");
+function showExit(text) { exitText.textContent = text; exitZone.classList.add("active"); }
+function endHold() {
+  clearTimeout(holdTimer); holdTimer = null;
+  exitZone.classList.remove("holding", "active");
+}
+exitZone.addEventListener("pointerdown", e => {
+  exitZone.setPointerCapture(e.pointerId);
+  exitZone.classList.add("holding");
+  showExit("Keep holding to exit…");
   holdTimer = setTimeout(async () => {
-    endHold();
-    setStatus("Leaving kiosk mode…");
+    holdTimer = null;
+    exitZone.classList.remove("holding");
+    showExit("Leaving kiosk mode…");
     try {
       const r = await fetch("exit", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
-      if (!r.ok) setStatus((await r.json()).message, true);
+      if (!r.ok) { showExit((await r.json()).message); setTimeout(endHold, 2000); }
     } catch (e) { /* The server is shutting down along with this window. */ }
   }, 3000);
 });
-["pointerup", "pointercancel"].forEach(t => brand.addEventListener(t, endHold));
+["pointerup", "pointercancel"].forEach(t => exitZone.addEventListener(t, () => { if (holdTimer) endHold(); }));
 document.addEventListener("contextmenu", e => e.preventDefault());
 </script>
 </body>
